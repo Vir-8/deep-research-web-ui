@@ -1,11 +1,9 @@
-import { streamText } from 'ai'
-import type { TextStreamPart } from 'ai'
 import { z } from 'zod'
 import { zodToJsonSchema } from 'zod-to-json-schema'
 
-import { languagePrompt, systemPrompt } from './prompt'
+import { languagePrompt } from './prompt'
 import { streamTextFromServer } from '~/composables/useAiProxy'
-import { openai } from '@ai-sdk/openai'
+import { useMem0Client } from './mem0'
 
 type PartialFeedback = DeepPartial<z.infer<typeof feedbackTypeSchema>>
 
@@ -22,7 +20,16 @@ export async function* generateFeedback({
   language: string
   numQuestions?: number
 }) {
-  console.log("GENERATING FEEDBACK")
+  // Fetch memories from Mem0
+  let memories: string[] = []
+  try {
+    const mem0Client = useMem0Client();
+    let memoryResults = await mem0Client?.getCurrentMemories()  
+    memories = (memoryResults ?? []).filter(m => m.memory !== undefined).map(m => m.memory as string)
+  } catch (error) {
+    console.error('Error fetching memories:', error)
+  }
+
   const schema = z.object({
     questions: z
       .array(z.string())
@@ -30,7 +37,14 @@ export async function* generateFeedback({
   })
   const jsonSchema = JSON.stringify(zodToJsonSchema(schema))
   const prompt = [
-    `Given the following query from the user, ask ${numQuestions} follow up questions to clarify the research direction. Return a maximum of ${numQuestions} questions, but feel free to return less if the original query is clear: <query>${query}</query>`,
+    `Given the following query from the user, ask ${numQuestions} follow up questions to clarify the research direction.`,
+    memories
+      ? `Here are some user preferences, and what we already know about the user, don't need to query these: ${memories.join(
+          '\n',
+        )}`
+      : '', 
+
+    `Return a maximum of ${numQuestions} questions, but feel free to return less if the original query is clear: <query>${query}</query>`,
     `You MUST respond in JSON matching this JSON schema: ${jsonSchema}`,
     languagePrompt(language),
   ].join('\n\n')
