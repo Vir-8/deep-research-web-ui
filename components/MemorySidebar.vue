@@ -134,7 +134,7 @@
                 </span>
               </div>
               <div class="text-xs text-gray-500">
-                {{ new Date(memory.updated_at).toLocaleString() }}
+                {{ memory.updated_at ? new Date(memory.updated_at).toLocaleString() : '' }}
               </div>
             </div>
           </div>
@@ -166,17 +166,8 @@
 <script setup lang="ts">
   import { ref, computed, onMounted, watch, nextTick, defineEmits, defineProps, onUnmounted } from 'vue'
   import { useMem0Client } from '../lib/mem0'
+  import type { Memory } from 'mem0ai'
   import EditMemoryModal from './EditMemoryModal.vue'
-
-  interface Memory {
-    id: string
-    memory?: string
-    user_id?: string
-    metadata?: any
-    categories?: string[]
-    created_at?: any
-    updated_at?: any
-  }
 
   const props = defineProps({
     trigger: { type: Boolean, required: true },
@@ -244,7 +235,7 @@
       const mem0Client = useMem0Client()
       if (mem0Client) {
         await mem0Client.deleteAllMemories()
-        memories.value = []
+        memories.value = await mem0Client.getAllMemories();
       }
     } catch (error) {
       console.error('Error deleting memories:', error)
@@ -307,8 +298,9 @@
         const mem0Client = useMem0Client()
         if (mem0Client && updated.memory) {
           await mem0Client.updateMemory(updated.id, updated.memory)
+          memories.value[index] = updated
+          memories.value = await mem0Client?.getAllMemories();
         }
-        memories.value[index] = updated
       }
     } catch (error) {
       console.error('Error updating memory:', error)
@@ -319,6 +311,7 @@
     const mem0Client = useMem0Client()
     if (mem0Client) {
       await mem0Client.deleteMemory(id)
+      memories.value = await mem0Client.getAllMemories();
     }
     memories.value = memories.value.filter((m) => m.id !== id)
     selectedMemory.value = null

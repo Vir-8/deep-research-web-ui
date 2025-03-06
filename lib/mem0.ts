@@ -1,9 +1,10 @@
 import MemoryClient from 'mem0ai'
-import { useRuntimeConfig } from '#app'
+import type { Memory } from 'mem0ai'
 
 // Create a composable to handle Mem0 client initialization
 export function useMem0Client() {
   const { config, aiApiBase } = useConfigStore()
+  let currentMemories: Memory[]
 
   const apiKey = (config.ai.mem0ApiKey as string) || ''
   if (!apiKey) {
@@ -33,7 +34,7 @@ export function useMem0Client() {
   const getAllMemories = async () => {
     try {
       const memories = await client.getAll({ user_id: 'deep-research-agent-mem0' })
-      console.log(memories)
+      currentMemories = memories
       return memories
     } catch (error) {
       console.error('Error getting memories:', error)
@@ -41,11 +42,16 @@ export function useMem0Client() {
     }
   }
 
+  const getCurrentMemories = async () => {
+    if (!currentMemories) {
+      return await getAllMemories()
+    }
+    return currentMemories
+  }
+
   const updateMemory = async (memoryId: string, text: string) => {
     try {
-      console.log('Updating memory:', memoryId, text)
       const result = await client.update(memoryId, text)
-      console.log(result)
       return result
     } catch (error) {
       console.error('Error updating memory:', error)
@@ -78,6 +84,7 @@ export function useMem0Client() {
   return {
     saveToMem0,
     getAllMemories,
+    getCurrentMemories,
     updateMemory,
     deleteMemory,
     deleteAllMemories,
