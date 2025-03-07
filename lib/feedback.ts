@@ -37,14 +37,14 @@ export async function* generateFeedback({
   })
   const jsonSchema = JSON.stringify(zodToJsonSchema(schema))
   const prompt = [
-    `Given the following query from the user, ask ${numQuestions} follow up questions to clarify the research direction.`,
+    `Given the following query from the user, ask ${numQuestions} personalized follow up questions to clarify the research direction.`,
     memories
-      ? `Here are some user preferences, and what we already know about the user, don't need to query these: ${memories.join(
+      ? `Here are some user preferences and known facts about the user: ${memories.join(
           '\n',
-        )}`
-      : '', 
+        )}\n\nUse these preferences to ask more targeted and relevant questions. Do NOT ask about facts that are already mentioned in these preferences.`
+      : '',
 
-    `Return a maximum of ${numQuestions} questions, but feel free to return less if the original query is clear: <query>${query}</query>`,
+    `Return a maximum of ${numQuestions} questions, but feel free to return less if the original query is clear. The questions should build on what we know about the user and help uncover new relevant information: <query>${query}</query>`,
     `You MUST respond in JSON matching this JSON schema: ${jsonSchema}`,
     languagePrompt(language),
   ].join('\n\n')
